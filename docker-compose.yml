@@ -1,0 +1,14 @@
+version: "3.2"
+
+services:
+  convert-document:
+    build: .
+    restart: on-failure
+    volumes:
+      - "./convert:/convert/convert"
+    tmpfs:
+      - /tmp
+      - /root/.config
+      - /home/app/.config:uid=1000,gid=1000
+  dummy:
+    build: dummy/
