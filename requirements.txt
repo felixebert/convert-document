@@ -2,3 +2,4 @@ Flask==1.1.2
 pantomime==0.4.0
 gunicorn[gthread]==20.0.4
 psutil==5.7.0
+pypandoc==1.5

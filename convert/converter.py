@@ -3,11 +3,13 @@ import time
 import shutil
 import logging
 import subprocess
+import pypandoc
 from tempfile import gettempdir
 from psutil import process_iter
 
 CONVERT_DIR = os.path.join(gettempdir(), 'convert')
 OUT_DIR = os.path.join(CONVERT_DIR, '/tmp/out/')
+OUT_FILE = os.path.join(OUT_DIR, 'output.pdf')
 INSTANCE_DIR = os.path.join(gettempdir(), 'soffice')
 ENV = '"-env:UserInstallation=file:///%s"' % INSTANCE_DIR
 COMMAND = ['/usr/bin/libreoffice', ENV, '--nologo', '--headless', '--nocrashreport', '--nodefault', '--norestore', '--nolockcheck', '--invisible', '--convert-to', 'pdf', '--outdir', OUT_DIR]  # noqa
@@ -60,15 +62,15 @@ class Converter(object):
         self.prepare()
 
     def convert_file(self, file_name, timeout):
-        try:
-            flush_path(INSTANCE_DIR)
-            flush_path(OUT_DIR)
-            self.kill()
-            cmd = COMMAND.copy()
-            cmd.append(file_name)
-            stat = os.stat(file_name)
-            timeout = min(timeout, 30 + round(stat.st_size / 1000))
+        flush_path(INSTANCE_DIR)
+        flush_path(OUT_DIR)
+        self.kill()
+        cmd = COMMAND.copy()
+        cmd.append(file_name)
+        stat = os.stat(file_name)
+        timeout = min(timeout, 30 + round(stat.st_size / 1000))
 
+        try:
             log.info('Starting LibreOffice: %s with timeout %s', cmd, timeout)
             subprocess.run(cmd, timeout=timeout)
 
@@ -78,10 +80,20 @@ class Converter(object):
                 raise ConversionFailure('Cannot generate PDF.')
 
             out_file = os.path.join(OUT_DIR, pdf_files[0])
-            stat = os.stat(out_file)
-            if stat.st_size == 0 or not os.path.exists(out_file):
-                raise ConversionFailure('Cannot generate PDF.')
-            return out_file
         except Exception as e:
-            self.terminate()
-            raise ConversionFailure('Cannot generate PDF.', e)
+            log.info("LibreOffice conversion failed", e)
+            try:
+                # TODO check for docx
+                pypandoc.convert_file(file_name, 'pdf', outputfile=OUT_FILE)
+                out_file = OUT_FILE
+            except Exception as e:
+                self.terminate()
+                raise ConversionFailure('Cannot generate PDF.', e)
+
+        if out_file is None:
+            raise ConversionFailure('Cannot generate PDF.')
+
+        stat = os.stat(out_file)
+        if stat.st_size == 0 or not os.path.exists(out_file):
+            raise ConversionFailure('Cannot generate PDF.')
+        return out_file
