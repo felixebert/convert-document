@@ -3,3 +3,9 @@ __pycache__/
 .vscode/
 fixtures/*.pdf
 out.pdf
+venv
+test/defect/
+test/lorem_ipsum/
+test/paradise/
+.idea
+.DS_Store

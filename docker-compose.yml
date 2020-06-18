@@ -6,9 +6,11 @@ services:
     restart: on-failure
     volumes:
       - "./convert:/convert/convert"
+    ports:
+      - "3000:3000"
     tmpfs:
       - /tmp
       - /root/.config
       - /home/app/.config:uid=1000,gid=1000
-  dummy:
-    build: dummy/
+    env_file:
+      - aleph.env

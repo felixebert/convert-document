@@ -1,5 +1,6 @@
 import requests
 import traceback
+import time
 from requests import RequestException, HTTPError
 
 import os
@@ -28,3 +29,4 @@ while True:
     for file in files:
         if file.endswith(".doc"):
             do_request("defect/" + file, file)
+            time.sleep(5)
