@@ -66,8 +66,11 @@ class Converter(object):
             self.kill()
             cmd = COMMAND.copy()
             cmd.append(file_name)
-            log.info('Starting LibreOffice: %s', cmd)
-            subprocess.run(cmd, timeout=60) # TODO variable timeout
+            stat = os.stat(file_name)
+            timeout = min(timeout, 30 + round(stat.st_size / 1000))
+
+            log.info('Starting LibreOffice: %s with timeout %s', cmd, timeout)
+            subprocess.run(cmd, timeout=timeout)
 
             files = os.listdir(OUT_DIR)
             pdf_files = list(filter(lambda f: f.endswith('.pdf'), files))
