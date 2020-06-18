@@ -5,7 +5,8 @@ from requests import RequestException, HTTPError
 
 import os
 
-files = os.listdir("defect/")
+base_dir = "defect/"
+files = os.listdir(base_dir)
 
 def do_request(file_path, file_name):
     fh = open(file_path, 'rb')
@@ -17,6 +18,18 @@ def do_request(file_path, file_name):
                             timeout=(5, 305),
                             stream=True)
         res.raise_for_status()
+        filename_parts = file_name.split(".")
+        filename_parts.pop()
+        base_filename = ".".join(filename_parts)
+
+        out_path = base_dir + base_filename + ".pdf"
+        with open(out_path, 'wb') as fh:
+            bytes_written = 0
+            for chunk in res.iter_content(chunk_size=None):
+                bytes_written += len(chunk)
+                fh.write(chunk)
+            if bytes_written > 50:
+                return out_path
         print("OK")
     except RequestException as exc:
         print("Conversion failed")

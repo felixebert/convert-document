@@ -12,7 +12,9 @@ OUT_DIR = os.path.join(CONVERT_DIR, '/tmp/out/')
 OUT_FILE = os.path.join(OUT_DIR, 'output.pdf')
 INSTANCE_DIR = os.path.join(gettempdir(), 'soffice')
 ENV = '"-env:UserInstallation=file:///%s"' % INSTANCE_DIR
-COMMAND = ['/usr/bin/libreoffice', ENV, '--nologo', '--headless', '--nocrashreport', '--nodefault', '--norestore', '--nolockcheck', '--invisible', '--convert-to', 'pdf', '--outdir', OUT_DIR]  # noqa
+COMMAND = ['/usr/bin/libreoffice', ENV, '--nologo', '--headless', '--nocrashreport', '--nodefault', '--norestore',
+           '--nolockcheck', '--invisible', '--convert-to', 'pdf', '--outdir', OUT_DIR]  # noqa
+SUPPORTED_BY_PANDOC = ['docx', 'odt']
 
 log = logging.getLogger(__name__)
 
@@ -40,7 +42,8 @@ class SystemFailure(Exception):
 class Converter(object):
     def kill(self):
         for proc in process_iter():
-            if 'office' not in proc.name():
+            proc_name = proc.name()
+            if 'office' not in proc_name and 'pandoc' not in proc_name:
                 continue
             log.warn("Killing existing process: %r", proc)
             proc.kill()
@@ -61,6 +64,10 @@ class Converter(object):
         self.dispose()
         self.prepare()
 
+    def on_convert_error(self, e):
+        self.terminate()
+        raise ConversionFailure('Cannot generate PDF.', e)
+
     def convert_file(self, file_name, timeout):
         flush_path(INSTANCE_DIR)
         flush_path(OUT_DIR)
@@ -68,8 +75,9 @@ class Converter(object):
         cmd = COMMAND.copy()
         cmd.append(file_name)
         stat = os.stat(file_name)
-        timeout = min(timeout, 30 + round(stat.st_size / 1000))
+        timeout = min(timeout, 30 + round(stat.st_size / 5000))
 
+        out_file = None
         try:
             log.info('Starting LibreOffice: %s with timeout %s', cmd, timeout)
             subprocess.run(cmd, timeout=timeout)
@@ -82,13 +90,17 @@ class Converter(object):
             out_file = os.path.join(OUT_DIR, pdf_files[0])
         except Exception as e:
             log.info("LibreOffice conversion failed", e)
-            try:
-                # TODO check for docx
-                pypandoc.convert_file(file_name, 'pdf', outputfile=OUT_FILE)
-                out_file = OUT_FILE
-            except Exception as e:
-                self.terminate()
-                raise ConversionFailure('Cannot generate PDF.', e)
+
+            file_basename, extension = os.path.splitext(file_name)
+            if extension is not None and extension.lower() in SUPPORTED_BY_PANDOC:
+                try:
+                    log.info("try pandoc conversion as fallback")
+                    pypandoc.convert_file(file_name, 'pdf', outputfile=OUT_FILE)
+                    out_file = OUT_FILE
+                except Exception as e:
+                    self.on_convert_error(e)
+            else:
+                self.on_convert_error(e)
 
         if out_file is None:
             raise ConversionFailure('Cannot generate PDF.')
