@@ -1,7 +1,6 @@
 import os
 import logging
 from threading import Lock
-from gunicorn.errors import HaltServer
 from flask import Flask, request, send_file
 from pantomime import FileName, normalize_mimetype, mimetype_extension
 
@@ -24,11 +23,6 @@ app = Flask('convert')
 def check_health():
     acquired = lock.acquire(timeout=2)
     try:
-        if acquired:
-            converter.prepare()
-        desktop = converter.connect()
-        if acquired:
-            converter.check_health(desktop)
         return ('OK', 200)
     except Exception:
         converter.dispose()
@@ -49,7 +43,6 @@ def check_ready():
 
 @app.route('/convert', methods=['POST'])
 def convert():
-    upload_file = None
     acquired = lock.acquire(timeout=1)
     if not acquired:
         return ('BUSY', 503)
