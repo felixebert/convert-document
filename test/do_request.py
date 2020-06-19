@@ -18,6 +18,7 @@ def do_request(file_path, file_name):
                             timeout=(5, 305),
                             stream=True)
         res.raise_for_status()
+
         filename_parts = file_name.split(".")
         filename_parts.pop()
         base_filename = ".".join(filename_parts)
@@ -28,9 +29,10 @@ def do_request(file_path, file_name):
             for chunk in res.iter_content(chunk_size=None):
                 bytes_written += len(chunk)
                 fh.write(chunk)
+            print("OK")
             if bytes_written > 50:
                 return out_path
-        print("OK")
+        raise Exception("Could not be converted to PDF.")
     except RequestException as exc:
         print("Conversion failed")
         traceback.print_tb(exc.__traceback__)
