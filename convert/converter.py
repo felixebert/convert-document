@@ -75,7 +75,7 @@ class Converter(object):
         cmd = COMMAND.copy()
         cmd.append(file_name)
         stat = os.stat(file_name)
-        timeout = min(timeout, 30 + round(stat.st_size / 5000))
+        timeout = min(timeout, 30 + round(stat.st_size / 2000))
 
         out_file = None
         try:
